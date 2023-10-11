@@ -1,6 +1,7 @@
 package hw1;
 
 import java.sql.Types;
+import java.util.Arrays;
 import java.util.HashMap;
 
 /**
@@ -10,6 +11,11 @@ import java.util.HashMap;
  *
  */
 public class Tuple {
+	private TupleDesc tupleDesc; // The schema for this tuple
+    private int pid; // Page ID
+    private int id;  // Tuple or slot ID
+    private Field[] fields; // The data of the tuple
+
 	
 	/**
 	 * Creates a new tuple with the given description
@@ -17,11 +23,13 @@ public class Tuple {
 	 */
 	public Tuple(TupleDesc t) {
 		//your code here
+		this.tupleDesc = t;
+	    this.fields = new Field[t.numFields()];
 	}
 	
 	public TupleDesc getDesc() {
 		//your code here
-		return null;
+		return tupleDesc;
 	}
 	
 	/**
@@ -30,11 +38,12 @@ public class Tuple {
 	 */
 	public int getPid() {
 		//your code here
-		return 0;
+		return pid;
 	}
 
 	public void setPid(int pid) {
 		//your code here
+		this.pid = pid;
 	}
 
 	/**
@@ -43,15 +52,18 @@ public class Tuple {
 	 */
 	public int getId() {
 		//your code here
-		return 0;
+		return id;
 	}
 
 	public void setId(int id) {
 		//your code here
+		this.id = id;
 	}
 	
 	public void setDesc(TupleDesc td) {
 		//your code here;
+		this.tupleDesc = td;
+        this.fields = new Field[td.numFields()];
 	}
 	
 	/**
@@ -61,11 +73,18 @@ public class Tuple {
 	 */
 	public void setField(int i, Field v) {
 		//your code here
+		if (i < 0 || i >= fields.length) {
+            throw new IllegalArgumentException("Invalid index: " + i);
+        }
+        fields[i] = v;
 	}
 	
 	public Field getField(int i) {
 		//your code here
-		return null;
+		if (i < 0 || i >= fields.length) {
+            throw new IllegalArgumentException("Invalid index: " + i);
+        }
+        return fields[i];
 	}
 	
 	/**
@@ -75,7 +94,10 @@ public class Tuple {
 	 */
 	public String toString() {
 		//your code here
-		return "";
+		return Arrays.stream(fields)
+	            .map(field -> field == null ? "null" : field.toString())
+	            .reduce((field1, field2) -> field1 + ", " + field2)
+	            .orElse("");
 	}
 }
 	

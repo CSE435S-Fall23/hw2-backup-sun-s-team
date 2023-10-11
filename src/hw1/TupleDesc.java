@@ -8,7 +8,8 @@ public class TupleDesc {
 
 	private Type[] types;
 	private String[] fields;
-	
+    private static final int INT_SIZE = 4;
+    private static final int STRING_SIZE = 129;
     /**
      * Create a new TupleDesc with typeAr.length fields with fields of the
      * specified types, with associated named fields.
@@ -19,6 +20,11 @@ public class TupleDesc {
      */
     public TupleDesc(Type[] typeAr, String[] fieldAr) {
     	//your code here
+    	if (typeAr == null || typeAr.length == 0) {
+            throw new IllegalArgumentException("typeAr must contain at least one entry");
+        }
+        this.types = typeAr;
+        this.fields = fieldAr;
     }
 
     /**
@@ -26,7 +32,7 @@ public class TupleDesc {
      */
     public int numFields() {
         //your code here
-    	return 0;
+    	return types.length;
     }
 
     /**
@@ -38,8 +44,25 @@ public class TupleDesc {
      */
     public String getFieldName(int i) throws NoSuchElementException {
         //your code here
-    	return null;
+    	if (i < 0 || i >= fields.length) {
+            throw new NoSuchElementException("Invalid index: " + i);
+        }
+        return fields[i];
     }
+
+    public TupleDesc rename(ArrayList<Integer> fields, ArrayList<String> names) {
+        if (fields.size() != names.size()) {
+            throw new IllegalArgumentException("Mismatch between fields and names size");
+        }
+        
+        String[] newFields = Arrays.copyOf(this.fields, this.fields.length);
+        for (int i = 0; i < fields.size(); i++) {
+            newFields[fields.get(i)] = names.get(i);
+        }
+
+        return new TupleDesc(this.types, newFields);
+    }
+
 
     /**
      * Find the index of the field with a given name.
@@ -50,7 +73,12 @@ public class TupleDesc {
      */
     public int nameToId(String name) throws NoSuchElementException {
         //your code here
-    	return 0;
+    	for (int i = 0; i < fields.length; i++) {
+            if ((name == null && fields[i] == null) || (name != null && name.equals(fields[i]))) {
+                return i;
+            }
+        }
+        throw new NoSuchElementException("Field name not found: " + name);
     }
 
     /**
@@ -62,7 +90,27 @@ public class TupleDesc {
      */
     public Type getType(int i) throws NoSuchElementException {
         //your code here
-    	return null;
+    	if (i < 0 || i >= types.length) {
+            throw new NoSuchElementException("Invalid index: " + i);
+        }
+        return types[i];
+    }
+    /**
+     * Returns a new TupleDesc with only the specified fields.
+     *
+     * @param fields the indices of the fields to project.
+     * @return a new TupleDesc with only the specified fields.
+     */
+    public TupleDesc project(ArrayList<Integer> fields) {
+        Type[] newTypes = new Type[fields.size()];
+        String[] newFields = new String[fields.size()];
+
+        for (int i = 0; i < fields.size(); i++) {
+            newTypes[i] = this.types[fields.get(i)];
+            newFields[i] = this.fields[fields.get(i)];
+        }
+
+        return new TupleDesc(newTypes, newFields);
     }
 
     /**
@@ -71,7 +119,11 @@ public class TupleDesc {
      */
     public int getSize() {
     	//your code here
-    	return 0;
+    	int size = 0;
+        for (Type type : types) {
+            size += type == Type.INT ? INT_SIZE : STRING_SIZE;
+        }
+        return size;
     }
 
     /**
@@ -84,7 +136,17 @@ public class TupleDesc {
      */
     public boolean equals(Object o) {
     	//your code here
-    	return false;
+    	//same memory address
+    	if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        TupleDesc that = (TupleDesc) o;
+        if (this.getSize() != that.getSize()) return false;
+        for (int i = 0; i < this.numFields(); i++) {
+            if (!this.getType(i).equals(that.getType(i))) {
+                return false;
+            }
+        }
+        return true;
     }
     
 
@@ -102,6 +164,16 @@ public class TupleDesc {
      */
     public String toString() {
         //your code here
-    	return "";
+    	StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < types.length; i++) {
+            sb.append(types[i].toString());
+            sb.append("(");
+            sb.append(fields[i]);
+            sb.append(")");
+            if (i < types.length - 1) {
+                sb.append(", ");
+            }
+        }
+        return sb.toString();
     }
 }

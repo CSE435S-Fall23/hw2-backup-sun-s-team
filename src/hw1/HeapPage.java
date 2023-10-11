@@ -24,7 +24,7 @@ public class HeapPage {
 		this.id = id;
 		this.tableId = tableId;
 
-		this.td = Database.getCatalog().getTupleDesc(this.tableId);
+		this.td = Database.getCatalog().getTupleDesc(this.tableId); 
 		this.numSlots = getNumSlots();
 		DataInputStream dis = new DataInputStream(new ByteArrayInputStream(data));
 
@@ -46,7 +46,7 @@ public class HeapPage {
 
 	public int getId() {
 		//your code here
-		return 0;
+		return this.id;
 	}
 
 	/**
@@ -56,7 +56,7 @@ public class HeapPage {
 	 */
 	public int getNumSlots() {
 		//your code here
-		return 0;
+		return (HeapFile.PAGE_SIZE * 8) / (td.getSize() * 8 + 1);
 	}
 
 	/**
@@ -65,7 +65,7 @@ public class HeapPage {
 	 */
 	private int getHeaderSize() {        
 		//your code here
-		return 0;
+		return (int) Math.ceil((double) numSlots / 8);
 	}
 
 	/**
@@ -75,7 +75,9 @@ public class HeapPage {
 	 */
 	public boolean slotOccupied(int s) {
 		//your code here
-		return false;
+		int byteNum = s / 8;
+        int bitNum = s % 8;
+        return (header[byteNum] & (1 << bitNum)) != 0;
 	}
 
 	/**
@@ -85,6 +87,13 @@ public class HeapPage {
 	 */
 	public void setSlotOccupied(int s, boolean value) {
 		//your code here
+		int byteNum = s / 8;
+        int bitNum = s % 8;
+        if (value) {
+            header[byteNum] |= (1 << bitNum);
+        } else {
+            header[byteNum] &= ~(1 << bitNum);
+        }
 	}
 	
 	/**
@@ -95,6 +104,21 @@ public class HeapPage {
 	 */
 	public void addTuple(Tuple t) throws Exception {
 		//your code here
+		if (!t.getDesc().equals(td)) {
+            throw new Exception("TupleDesc mismatch.");
+        }
+        
+        for (int i = 0; i < numSlots; i++) {
+            if (!slotOccupied(i)) {
+                setSlotOccupied(i, true);
+                tuples[i] = t;
+                t.setId(i);
+                t.setPid(this.id);
+                return;
+            }
+        }
+        
+        throw new Exception("No empty slots available.");
 	}
 
 	/**
@@ -103,8 +127,16 @@ public class HeapPage {
 	 * @param t the tuple to be deleted
 	 * @throws Exception
 	 */
-	public void deleteTuple(Tuple t) {
+	public void deleteTuple(Tuple t) throws Exception {
 		//your code here
+		int slotId = t.getId();
+        
+        if (t.getPid() != this.id || !slotOccupied(slotId)) {
+            throw new Exception("Tuple mismatch or already empty slot.");
+        }
+
+        setSlotOccupied(slotId, false);
+        tuples[slotId] = null;
 	}
 	
 	/**
@@ -114,7 +146,7 @@ public class HeapPage {
 		// if associated bit is not set, read forward to the next tuple, and
 		// return null.
 		if (!slotOccupied(slotId)) {
-			for (int i = 0; i < td.getSize(); i++) {
+			for (int i=0; i<td.getSize(); i++) {
 				try {
 					dis.readByte();
 				} catch (IOException e) {
@@ -129,8 +161,8 @@ public class HeapPage {
 		t.setPid(this.id);
 		t.setId(slotId);
 
-		for (int j = 0; j < td.numFields(); j++) {
-			if (td.getType(j) == Type.INT) {
+		for (int j=0; j<td.numFields(); j++) {
+			if(td.getType(j) == Type.INT) {
 				byte[] field = new byte[4];
 				try {
 					dis.read(field);
@@ -171,7 +203,7 @@ public class HeapPage {
 		DataOutputStream dos = new DataOutputStream(baos);
 
 		// create the header of the page
-		for (int i = 0; i < header.length; i++) {
+		for (int i=0; i<header.length; i++) {
 			try {
 				dos.writeByte(header[i]);
 			} catch (IOException e) {
@@ -181,11 +213,11 @@ public class HeapPage {
 		}
 
 		// create the tuples
-		for (int i = 0; i < tuples.length; i++) {
+		for (int i=0; i<tuples.length; i++) {
 
 			// empty slot
 			if (!slotOccupied(i)) {
-				for (int j = 0; j < td.getSize(); j++) {
+				for (int j=0; j<td.getSize(); j++) {
 					try {
 						dos.writeByte(0);
 					} catch (IOException e) {
@@ -197,7 +229,7 @@ public class HeapPage {
 			}
 
 			// non-empty slot
-			for (int j = 0; j < td.numFields(); j++) {
+			for (int j=0; j<td.numFields(); j++) {
 				Field f = tuples[i].getField(j);
 				try {
 					dos.write(f.toByteArray());
@@ -232,6 +264,25 @@ public class HeapPage {
 	 */
 	public Iterator<Tuple> iterator() {
 		//your code here
-		return null;
+		return new Iterator<Tuple>() {
+            private int currentIndex = 0;
+
+            @Override
+            public boolean hasNext() {
+                while (currentIndex < numSlots && !slotOccupied(currentIndex)) {
+                    currentIndex++;
+                }
+                return currentIndex < numSlots;
+            }
+
+            @Override
+            public Tuple next() {
+                if (hasNext()) {
+                    return tuples[currentIndex++];
+                } else {
+                    throw new NoSuchElementException();
+                }
+            }
+        };
 	}
 }

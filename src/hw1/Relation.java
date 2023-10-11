@@ -15,6 +15,8 @@ public class Relation {
 	
 	public Relation(ArrayList<Tuple> l, TupleDesc td) {
 		//your code here
+		this.tuples = new ArrayList<>(l);
+        this.td = td;
 	}
 	
 	/**
@@ -26,7 +28,16 @@ public class Relation {
 	 */
 	public Relation select(int field, RelationalOperator op, Field operand) {
 		//your code here
-		return null;
+		ArrayList<Tuple> selectedTuples = new ArrayList<>();
+
+        for (Tuple tuple : tuples) {
+            Field currentField = tuple.getField(field);
+            if (currentField.compare(op, operand)) {
+                selectedTuples.add(tuple);
+            }
+        }
+
+        return new Relation(selectedTuples, td);
 	}
 	
 	/**
@@ -36,8 +47,8 @@ public class Relation {
 	 * @return
 	 */
 	public Relation rename(ArrayList<Integer> fields, ArrayList<String> names) {
-		//your code here
-		return null;
+	    TupleDesc newDesc = td.rename(fields, names); 
+	    return new Relation(tuples, newDesc);
 	}
 	
 	/**
@@ -46,8 +57,28 @@ public class Relation {
 	 * @return
 	 */
 	public Relation project(ArrayList<Integer> fields) {
-		//your code here
-		return null;
+		Type[] newTypes = new Type[fields.size()];
+        String[] newFields = new String[fields.size()];
+        for (int i = 0; i < fields.size(); i++) {
+            newTypes[i] = td.getType(fields.get(i));
+            newFields[i] = td.getFieldName(fields.get(i));
+        }
+        TupleDesc newDesc = new TupleDesc(newTypes, newFields);
+
+        // Create new tuples based on the specified fields
+        ArrayList<Tuple> newTuples = new ArrayList<>();
+        for (Tuple tuple : tuples) {
+//            Object[] newValues = new Object[fields.size()];
+            Tuple newTuple = new Tuple(newDesc); 
+            for (int i = 0; i < fields.size(); i++) {
+//                newValues[i] = tuple.getField(fields.get(i));
+                newTuple.setField(i, tuple.getField(fields.get(i)));
+            }
+            
+            newTuples.add(newTuple);
+        }
+
+        return new Relation(newTuples, newDesc);
 	}
 	
 	/**
@@ -60,9 +91,42 @@ public class Relation {
 	 * @return
 	 */
 	public Relation join(Relation other, int field1, int field2) {
-		//your code here
-		return null;
-	}
+		Type[] joinTypes = new Type[td.numFields() + other.td.numFields()];
+        String[] joinFields = new String[joinTypes.length];
+
+        for (int i = 0; i < td.numFields(); i++) {
+            joinTypes[i] = td.getType(i);
+            joinFields[i] = td.getFieldName(i);
+        }
+
+        for (int i = 0; i < other.td.numFields(); i++) {
+            joinTypes[td.numFields() + i] = other.td.getType(i);
+            joinFields[td.numFields() + i] = other.td.getFieldName(i);
+        }
+        TupleDesc joinDesc = new TupleDesc(joinTypes, joinFields);
+
+        // Create new tuples for the join result
+        ArrayList<Tuple> joinTuples = new ArrayList<>();
+        for (Tuple tuple1 : tuples) {
+            for (Tuple tuple2 : other.tuples) {
+                if (tuple1.getField(field1).equals(tuple2.getField(field2))) {
+                    Object[] joinValues = new Object[joinTypes.length];
+                    for (int i = 0; i < td.numFields(); i++) {
+                        joinValues[i] = tuple1.getField(i);
+                    }
+
+                    for (int i = 0; i < other.td.numFields(); i++) {
+                        joinValues[td.numFields() + i] = tuple2.getField(i);
+                    }
+                    Tuple joinTuple = new Tuple(joinDesc); 
+                    joinTuples.add(joinTuple);
+                }
+            }
+        }
+
+        return new Relation(joinTuples, joinDesc);
+    }
+	
 	
 	/**
 	 * Performs an aggregation operation on a relation. See the lab write up for details.
@@ -71,26 +135,41 @@ public class Relation {
 	 * @return
 	 */
 	public Relation aggregate(AggregateOperator op, boolean groupBy) {
-		//your code here
-		return null;
+		Aggregator agg = new Aggregator(op,groupBy,this.td);
+		for(Tuple tuple:this.tuples) {
+			agg.merge(tuple);
+		}
+		TupleDesc aggDesc;
+		if(groupBy) {
+			Type[] types = {Type.INT};
+			String[] strings = {op.toString()};
+			aggDesc = new TupleDesc(types,strings);
+		}else {
+			 Type[] types = {this.td.getType(0), Type.INT};
+			 String[] strings = {this.td.getFieldName(0), op.toString()}; 
+			 aggDesc = new TupleDesc(types, strings);
+		}
+		return new Relation(agg.getResults(), aggDesc);
 	}
-	
-	public TupleDesc getDesc() {
-		//your code here
-		return null;
-	}
-	
-	public ArrayList<Tuple> getTuples() {
-		//your code here
-		return null;
-	}
+
+
+    public TupleDesc getDesc() {
+        return td;
+    }
+
+    public ArrayList<Tuple> getTuples() {
+        return new ArrayList<>(tuples);
+    }
 	
 	/**
 	 * Returns a string representation of this relation. The string representation should
 	 * first contain the TupleDesc, followed by each of the tuples in this relation
 	 */
 	public String toString() {
-		//your code here
-		return null;
+		StringBuilder result = new StringBuilder(td.toString() + "\n");
+        for (Tuple tuple : tuples) {
+            result.append(tuple.toString()).append("\n");
+        }
+        return result.toString();
 	}
 }
