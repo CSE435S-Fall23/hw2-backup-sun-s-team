@@ -1,0 +1,7 @@
+Relation: 55/55
+Aggregate: 10/10
+Query: 25/30
+	Missing AS
+Unit Tests: 5/5
+
+95/100
